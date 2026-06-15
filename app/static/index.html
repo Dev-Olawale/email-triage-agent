@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Inbox Triage Agent</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #0a0a0f;
+      color: #e8e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #0d0d1a;
+      border-bottom: 1px solid #1e1e3a;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header .logo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      width: 24px;
+      height: 24px;
+    }
+
+    header .logo-grid span {
+      display: block;
+      border-radius: 1px;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    header .badge {
+      margin-left: auto;
+      background: #1a1a35;
+      border: 1px solid #3a3a6a;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      color: #8888cc;
+    }
+
+    .badge-model {
+      background: #0a1f0a;
+      border: 1px solid #1a4a1a;
+      color: #44cc44;
+    }
+
+    .main {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .hero h2 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .hero p {
+      font-size: 15px;
+      color: #9090b0;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #0f6fff;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0055dd;
+    }
+
+    .btn-primary:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #1a1a35;
+      color: #aaaaff;
+      border: 1px solid #3a3a6a;
+    }
+
+    .btn-secondary:hover {
+      background: #22223a;
+    }
+
+    .btn-danger {
+      background: #1a0808;
+      color: #ff6666;
+      border: 1px solid #4a1a1a;
+    }
+
+    .btn-danger:hover {
+      background: #2a1010;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .panel {
+      background: #0d0d1a;
+      border: 1px solid #1e1e3a;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 14px 18px;
+      background: #12122a;
+      border-bottom: 1px solid #1e1e3a;
+      font-size: 13px;
+      font-weight: 600;
+      color: #8888cc;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-header .count {
+      background: #1e1e40;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      color: #6666aa;
+    }
+
+    /* Email list */
+    .email-item {
+      padding: 14px 18px;
+      border-bottom: 1px solid #14142a;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .email-item:hover {
+      background: #12122a;
+    }
+
+    .email-item.selected {
+      background: #141430;
+      border-left: 3px solid #0f6fff;
+    }
+
+    .email-check {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      accent-color: #0f6fff;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .email-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .email-from {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ccccee;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .email-subject {
+      font-size: 12px;
+      color: #7777aa;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #2a2a4a;
+      margin-top: 6px;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    .status-dot.processing {
+      background: #ffaa00;
+      animation: pulse 1s infinite;
+    }
+
+    .status-dot.done {
+      background: #00cc66;
+    }
+
+    .status-dot.error {
+      background: #ff4444;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    /* Custom email input */
+    .custom-email-form {
+      padding: 16px 18px;
+      border-top: 1px solid #1e1e3a;
+    }
+
+    .custom-email-form textarea {
+      width: 100%;
+      background: #0a0a18;
+      border: 1px solid #2a2a4a;
+      border-radius: 6px;
+      color: #ccccee;
+      font-size: 12px;
+      padding: 10px;
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+    }
+
+    .custom-email-form textarea:focus {
+      outline: none;
+      border-color: #0f6fff;
+    }
+
+    .custom-email-form input {
+      width: 100%;
+      background: #0a0a18;
+      border: 1px solid #2a2a4a;
+      border-radius: 6px;
+      color: #ccccee;
+      font-size: 12px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-family: inherit;
+    }
+
+    .custom-email-form input:focus {
+      outline: none;
+      border-color: #0f6fff;
+    }
+
+    .custom-email-form label {
+      font-size: 11px;
+      color: #6666aa;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* Results */
+    .results-empty {
+      padding: 60px 24px;
+      text-align: center;
+      color: #444466;
+    }
+
+    .results-empty .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .results-empty p {
+      font-size: 14px;
+    }
+
+    .result-card {
+      padding: 20px 22px;
+      border-bottom: 1px solid #14142a;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .result-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .urgency-badge {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+
+    .urgency-High {
+      background: #3a0000;
+      color: #ff6666;
+      border: 1px solid #6a1a1a;
+    }
+
+    .urgency-Medium {
+      background: #2a1a00;
+      color: #ffaa44;
+      border: 1px solid #5a3a00;
+    }
+
+    .urgency-Low {
+      background: #002a10;
+      color: #44cc88;
+      border: 1px solid #005a28;
+    }
+
+    .result-subject {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ddddff;
+      flex: 1;
+    }
+
+    .result-from {
+      font-size: 12px;
+      color: #6666aa;
+      margin-top: 2px;
+    }
+
+    .tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .tag {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      background: #1a1a35;
+      color: #8888cc;
+      border: 1px solid #2a2a4a;
+    }
+
+    .tag-route {
+      background: #0a1a2a;
+      color: #44aaff;
+      border-color: #1a3a5a;
+    }
+
+    .result-section {
+      margin-bottom: 10px;
+    }
+
+    .result-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555577;
+      margin-bottom: 4px;
+    }
+
+    .result-section-body {
+      font-size: 13px;
+      color: #b0b0cc;
+      line-height: 1.5;
+    }
+
+    .draft-reply {
+      background: #0a0a18;
+      border: 1px solid #1e1e38;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 12px;
+      color: #9999bb;
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    .action-box {
+      background: #0a180a;
+      border: 1px solid #1a3a1a;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: #66bb66;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      padding: 14px 18px;
+      background: #0a0a18;
+      border-top: 1px solid #1e1e3a;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .stat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .processing-indicator {
+      padding: 12px 18px;
+      background: #0a0a18;
+      border-top: 1px solid #1e1e3a;
+      font-size: 12px;
+      color: #ffaa00;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #333;
+      border-top-color: #ffaa00;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .aca-banner {
+      margin-top: 32px;
+      padding: 14px 20px;
+      background: #080818;
+      border: 1px solid #1a1a35;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      color: #6666aa;
+    }
+
+    .aca-banner strong {
+      color: #8888cc;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-grid">
+        <span style="background:#f25022"></span>
+        <span style="background:#7fba00"></span>
+        <span style="background:#00a4ef"></span>
+        <span style="background:#ffb900"></span>
+      </div>
+      <h1>Smart Inbox Triage Agent</h1>
+    </div>
+    <span class="badge badge-model">GPT-4.1 mini · Azure AI Foundry</span>
+    <span class="badge">Azure Container Apps</span>
+  </header>
+
+  <div class="main">
+    <div class="hero">
+      <h2>From chaos to clarity in seconds</h2>
+      <p>Select emails below and let the agent classify urgency, draft replies, and route each message — automatically.
+      </p>
+    </div>
+
+    <div class="controls">
+      <button class="btn-secondary" onclick="selectAll()">Select All</button>
+      <button class="btn-secondary" onclick="selectNone()">Clear Selection</button>
+      <button class="btn-primary" id="runBtn" onclick="runTriage()">▶ Run Agent</button>
+      <button class="btn-danger" onclick="clearResults()">Reset</button>
+    </div>
+
+    <div class="layout">
+      <!-- Left: Email list -->
+      <div>
+        <div class="panel">
+          <div class="panel-header">
+            Inbox
+            <span class="count" id="selectedCount">0 selected</span>
+          </div>
+          <div id="emailList"></div>
+
+          <!-- Custom email form -->
+          <div class="custom-email-form">
+            <div class="panel-header" style="margin: -16px -18px 12px; padding: 10px 18px; font-size:11px;">
+              + Add Custom Email
+            </div>
+            <label>From</label>
+            <input id="customFrom" placeholder="sender@company.com" />
+            <label>Subject</label>
+            <input id="customSubject" placeholder="Email subject line" />
+            <label>Body</label>
+            <textarea id="customBody" placeholder="Paste email body here..."></textarea>
+            <button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="addCustomEmail()">Add to
+              Inbox</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Results -->
+      <div class="panel">
+        <div class="panel-header">
+          Agent Results
+          <span class="count" id="resultCount">0 processed</span>
+        </div>
+        <div id="results">
+          <div class="results-empty">
+            <div class="icon">📬</div>
+            <p>Select emails and click <strong>Run Agent</strong> to start triage</p>
+          </div>
+        </div>
+        <div id="processingBar" style="display:none" class="processing-indicator">
+          <div class="spinner"></div>
+          <span id="processingText">Processing emails...</span>
+        </div>
+        <div id="statsBar" style="display:none" class="stats-bar">
+          <div class="stat">
+            <div class="stat-dot" style="background:#ff6666"></div><span id="statHigh">0 High</span>
+          </div>
+          <div class="stat">
+            <div class="stat-dot" style="background:#ffaa44"></div><span id="statMed">0 Medium</span>
+          </div>
+          <div class="stat">
+            <div class="stat-dot" style="background:#44cc88"></div><span id="statLow">0 Low</span>
+          </div>
+          <div class="stat" style="margin-left:auto; color:#6666aa">
+            <span id="statTime"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="aca-banner">
+      🚀 <div><strong>Running on Azure Container Apps</strong> · Scale-to-zero when idle · KEDA HTTP autoscaling ·
+        Managed OpenTelemetry → Application Insights · Deployed in &lt;3 minutes via Terraform</div>
+    </div>
+  </div>
+
+  <script>
+    let emails = [];
+    let selected = new Set();
+    let resultCount = 0;
+    let stats = { High: 0, Medium: 0, Low: 0 };
+    let startTime = null;
+
+    async function loadEmails() {
+      const res = await fetch('/api/sample-emails');
+      emails = await res.json();
+      renderEmailList();
+      selectAll();
+    }
+
+    function renderEmailList() {
+      const list = document.getElementById('emailList');
+      list.innerHTML = emails.map(e => `
+      <div class="email-item ${selected.has(e.id) ? 'selected' : ''}" onclick="toggleSelect(${e.id})">
+        <input type="checkbox" class="email-check" ${selected.has(e.id) ? 'checked' : ''}
+          onclick="event.stopPropagation(); toggleSelect(${e.id})" />
+        <div class="email-meta">
+          <div class="email-from">${e.from}</div>
+          <div class="email-subject">${e.subject}</div>
+        </div>
+        <div class="status-dot" id="dot-${e.id}"></div>
+      </div>
+    `).join('');
+      updateSelectedCount();
+    }
+
+    function toggleSelect(id) {
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      renderEmailList();
+    }
+
+    function selectAll() {
+      emails.forEach(e => selected.add(e.id));
+      renderEmailList();
+    }
+
+    function selectNone() {
+      selected.clear();
+      renderEmailList();
+    }
+
+    function updateSelectedCount() {
+      document.getElementById('selectedCount').textContent = `${selected.size} selected`;
+    }
+
+    function addCustomEmail() {
+      const from = document.getElementById('customFrom').value.trim();
+      const subject = document.getElementById('customSubject').value.trim();
+      const body = document.getElementById('customBody').value.trim();
+      if (!from || !subject || !body) {
+        alert('Please fill in From, Subject, and Body.');
+        return;
+      }
+      const newId = Date.now();
+      emails.push({ id: newId, from, subject, body });
+      selected.add(newId);
+      document.getElementById('customFrom').value = '';
+      document.getElementById('customSubject').value = '';
+      document.getElementById('customBody').value = '';
+      renderEmailList();
+    }
+
+    function clearResults() {
+      resultCount = 0;
+      stats = { High: 0, Medium: 0, Low: 0 };
+      document.getElementById('results').innerHTML = `
+      <div class="results-empty">
+        <div class="icon">📬</div>
+        <p>Select emails and click <strong>Run Agent</strong> to start triage</p>
+      </div>`;
+      document.getElementById('resultCount').textContent = '0 processed';
+      document.getElementById('statsBar').style.display = 'none';
+      document.getElementById('processingBar').style.display = 'none';
+      emails.forEach(e => {
+        const dot = document.getElementById(`dot-${e.id}`);
+        if (dot) { dot.className = 'status-dot'; }
+      });
+      document.getElementById('runBtn').disabled = false;
+    }
+
+    async function runTriage() {
+      if (selected.size === 0) { alert('Select at least one email first.'); return; }
+      const btn = document.getElementById('runBtn');
+      btn.disabled = true;
+      resultCount = 0;
+      stats = { High: 0, Medium: 0, Low: 0 };
+      startTime = Date.now();
+
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('statsBar').style.display = 'none';
+      document.getElementById('processingBar').style.display = 'flex';
+      document.getElementById('processingText').textContent = `Processing ${selected.size} emails with GPT-4.1 mini...`;
+
+      const selectedEmails = emails.filter(e => selected.has(e.id));
+
+      selectedEmails.forEach(e => {
+        const dot = document.getElementById(`dot-${e.id}`);
+        if (dot) dot.className = 'status-dot processing';
+      });
+
+      const response = await fetch('/api/triage/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emails: selectedEmails }),
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') {
+              finishTriage();
+              return;
+            }
+            try {
+              const result = JSON.parse(data);
+              renderResult(result);
+              const dot = document.getElementById(`dot-${result.email_id}`);
+              if (dot) dot.className = result.error ? 'status-dot error' : 'status-dot done';
+            } catch (e) { }
+          }
+        }
+      }
+      finishTriage();
+    }
+
+    function renderResult(r) {
+      resultCount++;
+      document.getElementById('resultCount').textContent = `${resultCount} processed`;
+
+      if (r.urgency) stats[r.urgency] = (stats[r.urgency] || 0) + 1;
+
+      if (document.querySelector('.results-empty')) {
+        document.getElementById('results').innerHTML = '';
+      }
+
+      const card = document.createElement('div');
+      card.className = 'result-card';
+
+      if (r.error) {
+        card.innerHTML = `
+        <div class="result-header">
+          <span class="urgency-badge urgency-High">Error</span>
+          <div><div class="result-subject">${r.subject}</div></div>
+        </div>
+        <div style="font-size:12px;color:#ff6666">${r.error}</div>`;
+      } else {
+        card.innerHTML = `
+        <div class="result-header">
+          <span class="urgency-badge urgency-${r.urgency}">${r.urgency}</span>
+          <div>
+            <div class="result-subject">${r.subject}</div>
+            <div class="result-from">${r.from}</div>
+          </div>
+        </div>
+        <div class="tags">
+          <span class="tag">${r.category}</span>
+          <span class="tag tag-route">→ ${r.route_to}</span>
+        </div>
+        <div class="result-section">
+          <div class="result-section-label">Summary</div>
+          <div class="result-section-body">${r.summary}</div>
+        </div>
+        <div class="result-section">
+          <div class="result-section-label">Draft Reply</div>
+          <div class="draft-reply">${r.draft_reply}</div>
+        </div>
+        <div class="result-section">
+          <div class="result-section-label">Next Action</div>
+          <div class="action-box">→ ${r.action}</div>
+        </div>`;
+      }
+      document.getElementById('results').appendChild(card);
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function finishTriage() {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      document.getElementById('processingBar').style.display = 'none';
+      document.getElementById('statsBar').style.display = 'flex';
+      document.getElementById('statHigh').textContent = `${stats.High || 0} High`;
+      document.getElementById('statMed').textContent = `${stats.Medium || 0} Medium`;
+      document.getElementById('statLow').textContent = `${stats.Low || 0} Low`;
+      document.getElementById('statTime').textContent = `⚡ ${elapsed}s · ${resultCount} emails`;
+      document.getElementById('runBtn').disabled = false;
+    }
+
+    loadEmails();
+  </script>
+</body>
+
+</html>

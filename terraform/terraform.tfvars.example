@@ -1,0 +1,5 @@
+# Copy this to terraform.tfvars and fill in your values
+subscription_id = "SUBSCRIPTION-ID"
+location        = "westeurope"
+prefix          = "triage"
+image_tag       = "latest"
