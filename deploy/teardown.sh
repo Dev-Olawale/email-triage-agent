@@ -1,10 +1,12 @@
 #!/bin/bash
 # Tear down all demo resources from your subscription
 set -e
+export PYTHONIOENCODING="utf-8"
+export PYTHONUTF8="1"
 
 PREFIX="triage"
 RG="rg-${PREFIX}-demo"
-SUBSCRIPTION="SUBSCRIPTION-ID"
+SUBSCRIPTION="${AZURE_SUBSCRIPTION_ID:-$(az account show --query id -o tsv)}"
 
 az account set --subscription "$SUBSCRIPTION"
 

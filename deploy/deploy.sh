@@ -5,9 +5,11 @@
 # Run this from the repo root: bash deploy/deploy.sh
 # ============================================================
 set -e
+export PYTHONIOENCODING="utf-8"
+export PYTHONUTF8="1"
 
 # ── CONFIG ── edit these before the demo ──────────────────
-SUBSCRIPTION="SUBSCRIPTION-ID"
+SUBSCRIPTION="${AZURE_SUBSCRIPTION_ID:-$(az account show --query id -o tsv)}"
 LOCATION="swedencentral"
 PREFIX="triage"
 RG="rg-${PREFIX}-demo"
