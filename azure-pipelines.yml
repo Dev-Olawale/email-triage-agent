@@ -24,7 +24,9 @@ variables:
   azureTenantId: f5d9c700-52cb-4812-8f33-2a10c9d71d0e
 
 pool:
-  vmImage: ubuntu-latest
+  name: Synergy
+  demands:
+    - Agent.Name -equals azagent2
 
 stages:
   - stage: Validate
