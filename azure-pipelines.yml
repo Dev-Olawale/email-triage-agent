@@ -1,0 +1,97 @@
+trigger:
+  branches:
+    include:
+      - dev
+
+pr:
+  branches:
+    include:
+      - main
+      - dev
+
+parameters:
+  - name: action
+    displayName: Pipeline action
+    type: string
+    default: deploy
+    values:
+      - deploy
+      - teardown
+
+variables:
+  azureServiceConnection: Smart-Inbox-Triage
+  azureSubscriptionId: 676b5883-eb15-4e62-b863-d25d4a0bffc9
+  azureTenantId: f5d9c700-52cb-4812-8f33-2a10c9d71d0e
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Validate
+    displayName: Validate scripts
+    jobs:
+      - job: ShellSyntax
+        displayName: Shell syntax checks
+        steps:
+          - checkout: self
+          - bash: |
+              set -euo pipefail
+              bash -n deploy/deploy.sh
+              bash -n deploy/teardown.sh
+            displayName: Validate deploy scripts
+
+  - stage: Deploy
+    displayName: Deploy Smart Inbox Triage
+    dependsOn: Validate
+    condition: and(succeeded(), eq('${{ parameters.action }}', 'deploy'))
+    jobs:
+      - job: DeployApp
+        displayName: Deploy Azure resources and app
+        steps:
+          - checkout: self
+          - task: AzureCLI@2
+            displayName: Run deploy script
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+
+                az account set --subscription "$(azureSubscriptionId)"
+                current_tenant="$(az account show --query tenantId -o tsv)"
+                if [ "$current_tenant" != "$(azureTenantId)" ]; then
+                  echo "Expected tenant $(azureTenantId), but Azure CLI is authenticated to $current_tenant."
+                  exit 1
+                fi
+
+                export AZURE_SUBSCRIPTION_ID="$(azureSubscriptionId)"
+                bash deploy/deploy.sh
+
+  - stage: Teardown
+    displayName: Tear down Smart Inbox Triage
+    dependsOn: Validate
+    condition: and(succeeded(), eq('${{ parameters.action }}', 'teardown'))
+    jobs:
+      - job: DeleteResources
+        displayName: Delete demo resource group
+        steps:
+          - checkout: self
+          - task: AzureCLI@2
+            displayName: Run teardown script
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+
+                az account set --subscription "$(azureSubscriptionId)"
+                current_tenant="$(az account show --query tenantId -o tsv)"
+                if [ "$current_tenant" != "$(azureTenantId)" ]; then
+                  echo "Expected tenant $(azureTenantId), but Azure CLI is authenticated to $current_tenant."
+                  exit 1
+                fi
+
+                export AZURE_SUBSCRIPTION_ID="$(azureSubscriptionId)"
+                bash deploy/teardown.sh
